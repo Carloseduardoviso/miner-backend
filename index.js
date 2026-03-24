@@ -12,11 +12,12 @@ app.use(cors({
 app.use(express.json());
 
 // CONFIGURAÇÕES DE SEGURANÇA
+// A chave sk_live está aqui, mas o ideal no Render é usar Environment Variables
 const SPEED_SECRET_KEY = process.env.SPEED_KEY || 'sk_live_mn3wt9l7s1kdMyrFmn4l0ifheOrI2911mn4l0ifhVeG42iWw';
-const LIMITE_SATS_SAQUE = 10000;
+const LIMITE_SATS_SAQUE = 10000; // Limite de segurança por transação
 
 app.get('/', (req, res) => {
-    res.send('Servidor CarlosVisoClash Miner está ONLINE e com DEBUG ATIVO!');
+    res.send('Servidor CarlosVisoClash Miner está ONLINE e com LOGS DETALHADOS!');
 });
 
 app.post('/api/saque-real', async (req, res) => {
@@ -24,32 +25,42 @@ app.post('/api/saque-real', async (req, res) => {
 
     console.log(`\n--- NOVA TENTATIVA DE SAQUE ---`);
     console.log(`Destino: ${address}`);
-    console.log(`Quantidade: ${amountSats} sats`);
+    console.log(`Quantidade solicitada no App: ${amountSats} sats`);
 
     // 1. Validação de Limite
     if (amountSats > LIMITE_SATS_SAQUE) {
+        console.warn("Bloqueado: Valor acima do limite de segurança.");
         return res.status(403).json({
             success: false,
             error: `Limite de segurança: máx ${LIMITE_SATS_SAQUE} sats.`
         });
     }
 
-    // 2. Montagem do corpo da requisição para a Speed
-    // Se começar com lnbc, tratamos como invoice. Se não, como destination normal.
+    // 2. Verificação do tipo de endereço
     const isInvoice = address.toLowerCase().startsWith('lnbc');
 
-    const payoutData = {
-        source_details: {
-            amount: amountSats,
-            currency: 'sats'
-        },
-        description: "Saque CarlosVisoClash Miner"
-    };
+    // Montagem dinâmica dos dados para a Speed
+    let payoutData = {};
 
     if (isInvoice) {
-        payoutData.payment_request = address.trim();
+        // Se for INVOICE (lnbc...), a Speed exige apenas o payment_request
+        // O valor já está embutido no código da fatura
+        payoutData = {
+            payment_request: address.trim(),
+            description: "Saque Invoice CarlosViso Miner"
+        };
+        console.log("Detectado: Lightning Invoice (lnbc)");
     } else {
-        payoutData.destination = address.trim();
+        // Se for Lightning Address (usuario@speed.app), precisa de destination + amount
+        payoutData = {
+            destination: address.trim(),
+            source_details: {
+                amount: amountSats,
+                currency: 'sats'
+            },
+            description: "Saque Direto CarlosViso Miner"
+        };
+        console.log("Detectado: Lightning Address (fixo)");
     }
 
     try {
@@ -60,33 +71,33 @@ app.post('/api/saque-real', async (req, res) => {
             }
         });
 
-        console.log("✅ SUCESSO SPEED ID:", response.data.id);
+        console.log("✅ SUCESSO! ID da Transação:", response.data.id);
         res.json({ success: true, data: response.data });
 
     } catch (error) {
-        // --- ÁREA DE DEBUG CRÍTICO ---
-        console.error("❌ ERRO DETECTADO NA SPEED:");
+        console.error("❌ ERRO NA API DA SPEED:");
 
         if (error.response) {
-            // O servidor da Speed respondeu com um erro (ex: 400, 401, 404)
-            console.error("Status do Erro:", error.response.status);
-            console.error("Dados do Erro:", JSON.stringify(error.response.data, null, 2));
+            // O servidor da Speed respondeu com erro (400, 401, 500...)
+            const speedData = error.response.data;
+            console.error("Status:", error.response.status);
+            console.error("Detalhes:", JSON.stringify(speedData, null, 2));
 
-            const speedMessage = error.response.data.message || "Erro desconhecido na API";
-            const speedCode = error.response.data.code || "no_code";
+            // Retorna a mensagem exata da Speed para o seu App (Snack)
+            const msg = speedData.message || "Erro desconhecido";
+            const code = speedData.code || "api_error";
 
+            res.status(error.response.status).json({
+                success: false,
+                error: `Speed diz: ${msg} [${code}]`
+            });
+        } else {
+            // Erro de conexão ou timeout
+            console.error("Erro de Rede:", error.message);
             res.status(500).json({
                 success: false,
-                error: `Speed diz: ${speedMessage} (${speedCode})`
+                error: "Erro de conexão com a Speed. Tente novamente."
             });
-        } else if (error.request) {
-            // A requisição foi feita mas não houve resposta
-            console.error("Sem resposta da Speed. Verifique a internet do servidor.");
-            res.status(500).json({ success: false, error: "A Speed não respondeu ao chamado." });
-        } else {
-            // Erro na montagem da requisição
-            console.error("Erro interno:", error.message);
-            res.status(500).json({ success: false, error: error.message });
         }
     }
 });
