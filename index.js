@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 // A chave sk_test deve ser configurada nas Environment Variables do Render para segurança
-const SPEED_SECRET_KEY = process.env.SPEED_KEY || 'sk_test_mn3wt9l7s1kdMyrFmn3wwffgnTE2iUZBmn3wwffjNcbKv46F';
+const SPEED_SECRET_KEY = process.env.SPEED_KEY || 'sk_live_mn3wt9l7s1kdMyrFmn4l0ifheOrI2911mn4l0ifhVeG42iWw';
 
 // Rota de teste para verificar se o servidor está online
 app.get('/', (req, res) => {
