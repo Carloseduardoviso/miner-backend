@@ -13,7 +13,7 @@ app.use(express.json());
 
 // CONFIGURAÇÕES DE SEGURANÇA
 const SPEED_SECRET_KEY = process.env.SPEED_KEY || 'sk_live_mn3wt9l7s1kdMyrFmn4l0ifheOrI2911mn4l0ifhVeG42iWw';
-const LIMITE_SATS_SAQUE = 1000; // Limite máximo por transação para sua segurança
+const LIMITE_SATS_SAQUE = 10000; // Limite máximo por transação para sua segurança
 
 app.get('/', (req, res) => {
     res.send('Servidor CarlosVisoClash Miner está ONLINE e em modo REAL!');
