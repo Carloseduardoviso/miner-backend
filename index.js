@@ -50,7 +50,7 @@ app.post('/api/saque-real', async (req, res) => {
         console.log("Payload enviado:", payload);
 
         const response = await axios.post(
-            'https://api.tryspeed.com/v1/payouts',
+            'https://api.tryspeed.com/payouts',
             payload,
             {
                 headers: {
