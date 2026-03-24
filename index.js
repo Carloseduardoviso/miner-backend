@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 // 1. Defina suas chaves e limites aqui no topo
-const SPEED_SECRET_KEY = process.env.SPEED_KEY || 'rk_live_mn3wt9l7s1kdMyrFmn4n16mlCchqqdhAmn4n16mmUHjWNbXr';
+const SPEED_SECRET_KEY = process.env.SPEED_KEY || 'sk_live_mn3wt9l7s1kdMyrFmn4l0ifheOrI2911mn4l0ifhVeG42iWw';
 const MINIMO_SATS = 25;
 const LIMITE_SATS_SAQUE = 10000;
 
