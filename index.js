@@ -1,64 +1,85 @@
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+
 const app = express();
 
-app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'] }));
+app.use(cors());
 app.use(express.json());
 
-const SPEED_SECRET_KEY = process.env.SPEED_KEY || 'rk_live_mn3wt9l7s1kdMyrFmn4n16mlCchqqdhAmn4n16mmUHjWNbXr';
+// 🔐 NUNCA coloque chave direto no código
+const SPEED_SECRET_KEY = process.env.SPEED_KEY;
+
 const MINIMO_SATS = 25;
 const LIMITE_SATS_SAQUE = 10000;
 
 app.get('/', (req, res) => {
-    res.send('Servidor CarlosViso Miner ON - Min: 25 sats');
+    res.send('Servidor CarlosViso Miner ON');
 });
 
 app.post('/api/saque-real', async (req, res) => {
     const { address, amountSats } = req.body;
 
-    console.log(`Solicitação: ${amountSats} sats para ${address}`);
+    console.log("==== NOVO SAQUE ====");
+    console.log("Address:", address);
+    console.log("Sats:", amountSats);
 
-    if (amountSats < MINIMO_SATS || amountSats > LIMITE_SATS_SAQUE) {
-        return res.status(400).json({ success: false, error: `Valor fora do limite (25 - ${LIMITE_SATS_SAQUE} sats).` });
+    // 🔎 validações
+    if (!address) {
+        return res.status(400).json({ success: false, error: "Endereço vazio" });
     }
 
-    const isInvoice = address.toLowerCase().startsWith('lnbc');
-    let payoutData = {};
-
-    if (isInvoice) {
-        payoutData = {
-            payment_request: address.trim(),
-            description: "Saque CarlosViso Miner"
-        };
-    } else {
-        // ESTRUTURA CORRIGIDA PARA LIGHTNING ADDRESS
-        payoutData = {
-            destination: address.trim(),
-            amount: amountSats,
-            currency: 'sats',
-            description: "Saque CarlosViso Miner",
-            source_details: { source_type: 'wallet' }
-        };
+    if (amountSats < MINIMO_SATS || amountSats > LIMITE_SATS_SAQUE) {
+        return res.status(400).json({
+            success: false,
+            error: `Valor inválido (mín ${MINIMO_SATS}, máx ${LIMITE_SATS_SAQUE})`
+        });
     }
 
     try {
-        const response = await axios.post('https://api.tryspeed.com/v1/payouts', payoutData, {
-            headers: {
-                'Authorization': `Basic ${Buffer.from(SPEED_SECRET_KEY + ':').toString('base64')}`,
-                'Content-Type': 'application/json'
+        // 🔥 CONVERSÃO CORRETA
+        const amountBTC = amountSats / 100000000;
+
+        const payload = {
+            destination: address.trim(),
+            amount: amountBTC,
+            currency: 'BTC',
+            description: 'Saque CarlosViso Miner'
+        };
+
+        console.log("Payload enviado:", payload);
+
+        const response = await axios.post(
+            'https://api.tryspeed.com/v1/payouts',
+            payload,
+            {
+                headers: {
+                    'Authorization': `Basic ${Buffer.from(SPEED_SECRET_KEY + ':').toString('base64')}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 30000
             }
+        );
+
+        console.log("RESPOSTA SPEED:", response.data);
+
+        return res.json({
+            success: true,
+            data: response.data
         });
 
-        res.json({ success: true, data: response.data });
     } catch (error) {
-        console.error("Erro Speed:", error.response?.data || error.message);
-        res.status(500).json({
+        console.error("ERRO COMPLETO:", error.response?.data || error.message);
+
+        return res.status(500).json({
             success: false,
-            error: error.response?.data?.message || "Erro na Speed. Verifique saldo/verificação."
+            error: error.response?.data || error.message
         });
     }
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));
+
+app.listen(PORT, () => {
+    console.log(`🚀 Rodando na porta ${PORT}`);
+});
