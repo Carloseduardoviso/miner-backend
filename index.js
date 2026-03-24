@@ -13,7 +13,7 @@ app.use(express.json());
 
 // CONFIGURAÇÕES DE SEGURANÇA
 // A chave sk_live está aqui, mas o ideal no Render é usar Environment Variables
-const SPEED_SECRET_KEY = process.env.SPEED_KEY || 'sk_live_mn3wt9l7s1kdMyrFmn4l0ifheOrI2911mn4l0ifhVeG42iWw';
+const SPEED_SECRET_KEY = process.env.SPEED_KEY || 'rk_live_mn3wt9l7s1kdMyrFmn4n16mlCchqqdhAmn4n16mmUHjWNbXr';
 const LIMITE_SATS_SAQUE = 10000; // Limite de segurança por transação
 
 app.get('/', (req, res) => {
