@@ -6,18 +6,32 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// A chave sk_test deve ser configurada nas Environment Variables do Render para segurança
+// CONFIGURAÇÕES DE SEGURANÇA
 const SPEED_SECRET_KEY = process.env.SPEED_KEY || 'sk_live_mn3wt9l7s1kdMyrFmn4l0ifheOrI2911mn4l0ifhVeG42iWw';
+const LIMITE_SATS_SAQUE = 1000; // Limite máximo por transação para sua segurança
 
-// Rota de teste para verificar se o servidor está online
 app.get('/', (req, res) => {
-    res.send('Servidor CarlosVisoClash Miner está ONLINE!');
+    res.send('Servidor CarlosVisoClash Miner está ONLINE e em modo REAL!');
 });
 
 app.post('/api/saque-real', async (req, res) => {
     const { address, amountSats } = req.body;
 
     console.log(`--- Tentativa de Saque: ${amountSats} sats para ${address} ---`);
+
+    // 1. Validação de Limite de Segurança
+    if (amountSats > LIMITE_SATS_SAQUE) {
+        console.warn(`Tentativa de saque bloqueada: ${amountSats} excede o limite de ${LIMITE_SATS_SAQUE}`);
+        return res.status(403).json({
+            success: false,
+            error: `O limite máximo por saque é de ${LIMITE_SATS_SAQUE} sats.`
+        });
+    }
+
+    // 2. Validação básica de dados
+    if (!address || !amountSats) {
+        return res.status(400).json({ success: false, error: "Dados incompletos." });
+    }
 
     try {
         const response = await axios.post('https://api.tryspeed.com/v1/payouts', {
@@ -26,7 +40,7 @@ app.post('/api/saque-real', async (req, res) => {
                 amount: amountSats,
                 currency: 'sats'
             },
-            description: "Saque CarlosVisoClash Miner"
+            description: "Saque CarlosVisoClash Miner - Real"
         }, {
             headers: {
                 'Authorization': `Basic ${Buffer.from(SPEED_SECRET_KEY + ':').toString('base64')}`,
